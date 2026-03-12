@@ -74,6 +74,10 @@ A full example is provided in the [docker-compose file](https://github.com/micka
           # - SSH_PASSWORD=password
           # OPTIONAL: enable password auth in SSH server (default true)
           - SSH_PASSWORD_AUTH=true
+          # OPTIONAL: SSH user home directory (default: VOLUME_PATH)
+          # - SSH_USER_HOME=/home/sftp
+          # OPTIONAL: final SSH directory used by sshd (default: SSH_USER_HOME/.ssh)
+          # - SSH_DIR=/home/sftp/.ssh
           # OPTIONAL: one or more public keys for USERNAME (supports '\n' between keys)
           # - SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
         ports:
@@ -89,7 +93,7 @@ Configuration is done through environment variables.
 Required:
 - USERNAME: the name to be use for login.
 - PASSWORD: the password to login.
-- VOLUME_PATH: the home of the user (can be a volume mounted from another container like in the example).
+- VOLUME_PATH: rsync module path and default SSH user home.
 
 Optionnal:
 - CHROOT (default no): if set to yes, enable chroot of user (prevent access to other folders than its home folder). Be aware, that 
@@ -101,8 +105,10 @@ currently this feature can leads to unexpected results depending on your directo
 - ENABLE_SSH (default false): start SSH server for rsync-over-SSH.
 - SSH_PASSWORD (default PASSWORD): SSH password for USERNAME.
 - SSH_PASSWORD_AUTH (default true): enable SSH password authentication.
+- SSH_USER_HOME (default VOLUME_PATH): home directory of the SSH user.
+- SSH_DIR (default SSH_USER_HOME/.ssh): final `.ssh` directory used by sshd.
 - SSH_PUBLIC_KEY: public key(s) for USERNAME, supports `\n` separated keys.
-- SSH_MOUNTED_KEYS_DIR (default /home/.ssh): mounted directory containing `authorized_keys` and optional `known_hosts`.
+- SSH_MOUNTED_KEYS_DIR (default /home/.ssh): mounted directory containing `authorized_keys`.
 
 ### Using rsync over SSH
 
@@ -111,6 +117,8 @@ Enable SSH transport in your service:
     environment:
       - ENABLE_SSH=true
       - ENABLE_RSYNCD=false # optional: set true to run both
+      - SSH_USER_HOME=/home/sftp # optional
+      - SSH_DIR=/home/sftp/.ssh # optional
       - SSH_MOUNTED_KEYS_DIR=/home/.ssh
     ports:
       - 12222:22

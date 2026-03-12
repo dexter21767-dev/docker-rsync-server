@@ -42,9 +42,13 @@ services:
       # - SSH_PASSWORD=password
       # OPTIONAL: enable password auth in SSH server (default true)
       - SSH_PASSWORD_AUTH=true
+      # OPTIONAL: SSH user home directory (default: VOLUME_PATH)
+      # - SSH_USER_HOME=/home/sftp
+      # OPTIONAL: final SSH directory used by sshd (default: SSH_USER_HOME/.ssh)
+      # - SSH_DIR=/home/sftp/.ssh
       # OPTIONAL: one or more public keys for USERNAME (supports '\n' between keys)
       # - SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
-      # OPTIONAL: mounted directory containing authorized_keys/known_hosts (default /home/.ssh)
+      # OPTIONAL: mounted directory containing authorized_keys (default /home/.ssh)
       - SSH_MOUNTED_KEYS_DIR=/home/.ssh
     ports:
       - 18873:873

@@ -11,6 +11,8 @@ is_true() {
 setup_ssh() {
   local ssh_password_auth
   local group_name
+  local ssh_dir
+  local authorized_keys_file
   local user_group
   local user_home
   local user_uid
@@ -31,9 +33,9 @@ setup_ssh() {
 
   if ! id -u "${USERNAME}" >/dev/null 2>&1; then
     if awk -F: -v uid="${OWNER_ID}" '$3 == uid { found=1 } END { exit !found }' /etc/passwd; then
-      adduser -D -h "${VOLUME_PATH}" -s /bin/sh -G "${group_name}" "${USERNAME}" >/dev/null 2>&1 || true
+      adduser -D -h "${SSH_USER_HOME}" -s /bin/sh -G "${group_name}" "${USERNAME}" >/dev/null 2>&1 || true
     else
-      adduser -D -h "${VOLUME_PATH}" -s /bin/sh -u "${OWNER_ID}" -G "${group_name}" "${USERNAME}" >/dev/null 2>&1 || true
+      adduser -D -h "${SSH_USER_HOME}" -s /bin/sh -u "${OWNER_ID}" -G "${group_name}" "${USERNAME}" >/dev/null 2>&1 || true
     fi
   fi
 
@@ -45,6 +47,15 @@ setup_ssh() {
   user_home="$(awk -F: -v user="${USERNAME}" '$1 == user { print $6; exit }' /etc/passwd)"
   user_group="$(id -gn "${USERNAME}")"
   user_uid="$(id -u "${USERNAME}")"
+  if [ -n "${SSH_DIR}" ]; then
+    case "${SSH_DIR}" in
+      /*) ssh_dir="${SSH_DIR}" ;;
+      *) ssh_dir="${user_home}/${SSH_DIR}" ;;
+    esac
+  else
+    ssh_dir="${user_home}/.ssh"
+  fi
+  authorized_keys_file="${ssh_dir}/authorized_keys"
 
   mkdir -p /var/run/sshd
   ssh-keygen -A
@@ -58,31 +69,26 @@ setup_ssh() {
     fi
   fi
 
-  mkdir -p "${user_home}/.ssh"
-  chmod 700 "${user_home}/.ssh"
-  chown "${user_uid}:${user_group}" "${user_home}/.ssh"
+  mkdir -p "${ssh_dir}"
+  chmod 700 "${ssh_dir}"
+  chown "${user_uid}:${user_group}" "${ssh_dir}"
 
   if [ -n "${SSH_MOUNTED_KEYS_DIR}" ] && [ -d "${SSH_MOUNTED_KEYS_DIR}" ]; then
     if [ -f "${SSH_MOUNTED_KEYS_DIR}/authorized_keys" ]; then
-      cat "${SSH_MOUNTED_KEYS_DIR}/authorized_keys" >> "${user_home}/.ssh/authorized_keys"
-    fi
-    if [ -f "${SSH_MOUNTED_KEYS_DIR}/known_hosts" ]; then
-      cp "${SSH_MOUNTED_KEYS_DIR}/known_hosts" "${user_home}/.ssh/known_hosts"
-      chown "${user_uid}:${user_group}" "${user_home}/.ssh/known_hosts"
-      chmod 644 "${user_home}/.ssh/known_hosts"
+      cat "${SSH_MOUNTED_KEYS_DIR}/authorized_keys" >> "${authorized_keys_file}"
     fi
   fi
 
   if [ -n "${SSH_PUBLIC_KEY}" ]; then
-    printf '%b\n' "${SSH_PUBLIC_KEY}" >> "${user_home}/.ssh/authorized_keys"
+    printf '%b\n' "${SSH_PUBLIC_KEY}" >> "${authorized_keys_file}"
   fi
 
-  if [ -f "${user_home}/.ssh/authorized_keys" ]; then
+  if [ -f "${authorized_keys_file}" ]; then
     tmp_authorized_keys="$(mktemp)"
-    awk 'NF && !seen[$0]++' "${user_home}/.ssh/authorized_keys" > "${tmp_authorized_keys}"
-    mv "${tmp_authorized_keys}" "${user_home}/.ssh/authorized_keys"
-    chown "${user_uid}:${user_group}" "${user_home}/.ssh/authorized_keys"
-    chmod 600 "${user_home}/.ssh/authorized_keys"
+    awk 'NF && !seen[$0]++' "${authorized_keys_file}" > "${tmp_authorized_keys}"
+    mv "${tmp_authorized_keys}" "${authorized_keys_file}"
+    chown "${user_uid}:${user_group}" "${authorized_keys_file}"
+    chmod 600 "${authorized_keys_file}"
   fi
 
   cat > /etc/ssh/sshd_config <<EOF
@@ -94,7 +100,7 @@ PermitRootLogin no
 PasswordAuthentication ${ssh_password_auth}
 KbdInteractiveAuthentication no
 PubkeyAuthentication yes
-AuthorizedKeysFile .ssh/authorized_keys
+AuthorizedKeysFile ${authorized_keys_file}
 PrintMotd no
 X11Forwarding no
 AllowTcpForwarding no
@@ -127,6 +133,8 @@ if [ "$1" = "/usr/bin/rsync" ] || [ "$1" = "rsync" ]; then
   SSH_PORT="${SSH_PORT:-22}"
   SSH_PASSWORD_AUTH="${SSH_PASSWORD_AUTH:-true}"
   SSH_PASSWORD="${SSH_PASSWORD:-${PASSWORD}}"
+  SSH_USER_HOME="${SSH_USER_HOME:-${VOLUME_PATH}}"
+  SSH_DIR="${SSH_DIR:-${SSH_USER_HOME}/.ssh}"
   SSH_MOUNTED_KEYS_DIR="${SSH_MOUNTED_KEYS_DIR:-/home/.ssh}"
 
   # Ensure VOLUME PATH exists
