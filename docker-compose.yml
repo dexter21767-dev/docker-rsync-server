@@ -34,7 +34,23 @@ services:
       # OPTIONAL: specifies one or more group names/IDs that will be used when accessing the module. The first one will be the default group, and any extra ones be set as supplemental groups.
       # (default set to GID owner of VOLUME_PATH)
       # - GROUP_ID = 1000
+      # OPTIONAL: enable SSH server for rsync-over-SSH (default false)
+      - ENABLE_SSH=false
+      # OPTIONAL: disable rsync daemon if you only want SSH transport (default true)
+      - ENABLE_RSYNCD=true
+      # OPTIONAL: SSH password for USERNAME (default: PASSWORD)
+      # - SSH_PASSWORD=password
+      # OPTIONAL: enable password auth in SSH server (default true)
+      - SSH_PASSWORD_AUTH=true
+      # OPTIONAL: one or more public keys for USERNAME (supports '\n' between keys)
+      # - SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
+      # OPTIONAL: mounted directory containing authorized_keys/known_hosts (default /home/.ssh)
+      - SSH_MOUNTED_KEYS_DIR=/home/.ssh
     ports:
       - 18873:873
+      - 12222:22
     volumes_from:
       - app
+    volumes:
+      # Optional key mount for SSH auth
+      - ./ssh:/home/.ssh:ro

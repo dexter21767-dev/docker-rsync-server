@@ -3,7 +3,7 @@ MAINTAINER Mickaël PERRIN <dev@mickaelperrin.fr>
 
 # tzdata for time syncing
 # bash for entrypoint script
-RUN apk add --no-cache rsync bash tzdata
+RUN apk add --no-cache rsync bash tzdata openssh
 
 # Create entrypoint script
 ADD docker-entrypoint.sh /
@@ -17,7 +17,7 @@ ADD /rsyncd.tpl.conf /
 ENV TZ="Europe/Paris" \
     LANG="C.UTF-8"
 
-EXPOSE 873
+EXPOSE 873 22
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 
 # RUN rsync in no daemon and expose errors to stdout

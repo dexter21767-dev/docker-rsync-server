@@ -8,6 +8,7 @@ This is a lightweight RSYNC server in a docker container.
 This image provides:
  - an alpine base image
  - RSYNC server
+ - Optional OpenSSH server for rsync-over-SSH
  - User creation based on env variable
  - Home directory based on env variable
  - Automatic UID detection based on home permissions
@@ -65,8 +66,19 @@ A full example is provided in the [docker-compose file](https://github.com/micka
           # OPTIONAL: specifies one or more group names/IDs that will be used when accessing the module. The first one will be the default group, and any extra ones be set as supplemental groups.
           # (default set to GID owner of VOLUME_PATH)
           # - GROUP_ID = 1000
+          # OPTIONAL: enable SSH server for rsync-over-SSH (default false)
+          - ENABLE_SSH=false
+          # OPTIONAL: disable rsync daemon if you only want SSH transport (default true)
+          - ENABLE_RSYNCD=true
+          # OPTIONAL: SSH password for USERNAME (default: PASSWORD)
+          # - SSH_PASSWORD=password
+          # OPTIONAL: enable password auth in SSH server (default true)
+          - SSH_PASSWORD_AUTH=true
+          # OPTIONAL: one or more public keys for USERNAME (supports '\n' between keys)
+          # - SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
         ports:
           - 18873:873
+          - 12222:22
         volumes_from:
           - app
 
@@ -85,6 +97,39 @@ currently this feature can leads to unexpected results depending on your directo
 - VOLUME_NAME (default volume): the name of the volume in rsync.
 - OWNER_ID: the uid of the user. If not set automatically grabbed from the uid of the owner of the VOLUME_PATH.
 - HOSTS_ALLOW (default 0.0.0.0/0): restrict hosts connections.
+- ENABLE_RSYNCD (default true): enable/disable rsync daemon on port 873.
+- ENABLE_SSH (default false): start SSH server for rsync-over-SSH.
+- SSH_PASSWORD (default PASSWORD): SSH password for USERNAME.
+- SSH_PASSWORD_AUTH (default true): enable SSH password authentication.
+- SSH_PUBLIC_KEY: public key(s) for USERNAME, supports `\n` separated keys.
+- SSH_MOUNTED_KEYS_DIR (default /home/.ssh): mounted directory containing `authorized_keys` and optional `known_hosts`.
+
+### Using rsync over SSH
+
+Enable SSH transport in your service:
+
+    environment:
+      - ENABLE_SSH=true
+      - ENABLE_RSYNCD=false # optional: set true to run both
+      - SSH_MOUNTED_KEYS_DIR=/home/.ssh
+    ports:
+      - 12222:22
+    volumes:
+      - ./ssh:/home/.ssh:ro
+
+Then sync through SSH:
+
+    rsync -av -e "ssh -p 12222" ./local-dir/ sftp@localhost:/data/
+
+For key-based auth, provide `SSH_PUBLIC_KEY` and optionally disable password auth:
+
+    environment:
+      - ENABLE_SSH=true
+      - SSH_PASSWORD_AUTH=false
+      - SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
+
+If you want both key and password auth, keep `SSH_PASSWORD_AUTH=true` and provide either
+`SSH_PUBLIC_KEY`, a mounted `SSH_MOUNTED_KEYS_DIR`, or both.
 
 ## Disclaimer
 
