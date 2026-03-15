@@ -80,11 +80,16 @@ A full example is provided in the [docker-compose file](https://github.com/micka
           # - SSH_DIR=/home/sftp/.ssh
           # OPTIONAL: one or more public keys for USERNAME (supports '\n' between keys)
           # - SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
+          # OPTIONAL: mounted authorized_keys file path (default /authorized_keys)
+          - SSH_AUTHORIZED_KEYS_FILE=/authorized_keys
         ports:
           - 18873:873
           - 12222:22
         volumes_from:
           - app
+        volumes:
+          # Optional authorized_keys file mount for SSH key auth
+          - ./ssh/authorized_keys:/authorized_keys:ro
 
 ### Configuration
 
@@ -108,7 +113,8 @@ currently this feature can leads to unexpected results depending on your directo
 - SSH_USER_HOME (default VOLUME_PATH): home directory of the SSH user.
 - SSH_DIR (default SSH_USER_HOME/.ssh): final `.ssh` directory used by sshd.
 - SSH_PUBLIC_KEY: public key(s) for USERNAME, supports `\n` separated keys.
-- SSH_MOUNTED_KEYS_DIR (default /home/.ssh): mounted directory containing `authorized_keys`.
+- SSH_AUTHORIZED_KEYS_FILE (default /authorized_keys): mounted `authorized_keys` file path.
+- The container automatically generates an internal SSH key pair for USERNAME at `SSH_DIR/id_ed25519`.
 
 ### Using rsync over SSH
 
@@ -119,11 +125,11 @@ Enable SSH transport in your service:
       - ENABLE_RSYNCD=false # optional: set true to run both
       - SSH_USER_HOME=/home/sftp # optional
       - SSH_DIR=/home/sftp/.ssh # optional
-      - SSH_MOUNTED_KEYS_DIR=/home/.ssh
+      - SSH_AUTHORIZED_KEYS_FILE=/authorized_keys
     ports:
       - 12222:22
     volumes:
-      - ./ssh:/home/.ssh:ro
+      - ./ssh/authorized_keys:/authorized_keys:ro
 
 Then sync through SSH:
 
@@ -137,7 +143,7 @@ For key-based auth, provide `SSH_PUBLIC_KEY` and optionally disable password aut
       - SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
 
 If you want both key and password auth, keep `SSH_PASSWORD_AUTH=true` and provide either
-`SSH_PUBLIC_KEY`, a mounted `SSH_MOUNTED_KEYS_DIR`, or both.
+`SSH_PUBLIC_KEY`, a mounted `SSH_AUTHORIZED_KEYS_FILE`, or both.
 
 ## Disclaimer
 

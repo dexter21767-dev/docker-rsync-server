@@ -48,13 +48,13 @@ services:
       # - SSH_DIR=/home/sftp/.ssh
       # OPTIONAL: one or more public keys for USERNAME (supports '\n' between keys)
       # - SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
-      # OPTIONAL: mounted directory containing authorized_keys (default /home/.ssh)
-      - SSH_MOUNTED_KEYS_DIR=/home/.ssh
+      # OPTIONAL: mounted authorized_keys file path (default /authorized_keys)
+      - SSH_AUTHORIZED_KEYS_FILE=/authorized_keys
     ports:
       - 18873:873
       - 12222:22
     volumes_from:
       - app
     volumes:
-      # Optional key mount for SSH auth
-      - ./ssh:/home/.ssh:ro
+      # Optional authorized_keys file mount for SSH key auth
+      - ./ssh/authorized_keys:/authorized_keys:ro

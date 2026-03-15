@@ -13,6 +13,9 @@ setup_ssh() {
   local group_name
   local ssh_dir
   local authorized_keys_file
+  local mounted_authorized_keys_file
+  local generated_private_key
+  local generated_public_key
   local user_group
   local user_home
   local user_uid
@@ -56,6 +59,9 @@ setup_ssh() {
     ssh_dir="${user_home}/.ssh"
   fi
   authorized_keys_file="${ssh_dir}/authorized_keys"
+  mounted_authorized_keys_file="${SSH_AUTHORIZED_KEYS_FILE}"
+  generated_private_key="${ssh_dir}/id_ed25519"
+  generated_public_key="${generated_private_key}.pub"
 
   mkdir -p /var/run/sshd
   ssh-keygen -A
@@ -73,22 +79,31 @@ setup_ssh() {
   chmod 700 "${ssh_dir}"
   chown "${user_uid}:${user_group}" "${ssh_dir}"
 
-  if [ -n "${SSH_MOUNTED_KEYS_DIR}" ] && [ -d "${SSH_MOUNTED_KEYS_DIR}" ]; then
-    if [ -f "${SSH_MOUNTED_KEYS_DIR}/authorized_keys" ]; then
-      cat "${SSH_MOUNTED_KEYS_DIR}/authorized_keys" >> "${authorized_keys_file}"
-    fi
+  if [ ! -f "${generated_private_key}" ] || [ ! -f "${generated_public_key}" ]; then
+    rm -f "${generated_private_key}" "${generated_public_key}"
+    ssh-keygen -q -t ed25519 -N '' -C "${USERNAME}@container" -f "${generated_private_key}"
+  fi
+  chown "${user_uid}:${user_group}" "${generated_private_key}" "${generated_public_key}"
+  chmod 600 "${generated_private_key}"
+  chmod 644 "${generated_public_key}"
+
+  : > "${authorized_keys_file}"
+  if [ -n "${mounted_authorized_keys_file}" ] && [ -f "${mounted_authorized_keys_file}" ]; then
+    cat "${mounted_authorized_keys_file}" >> "${authorized_keys_file}"
   fi
 
   if [ -n "${SSH_PUBLIC_KEY}" ]; then
     printf '%b\n' "${SSH_PUBLIC_KEY}" >> "${authorized_keys_file}"
   fi
 
-  if [ -f "${authorized_keys_file}" ]; then
+  if [ -s "${authorized_keys_file}" ]; then
     tmp_authorized_keys="$(mktemp)"
     awk 'NF && !seen[$0]++' "${authorized_keys_file}" > "${tmp_authorized_keys}"
     mv "${tmp_authorized_keys}" "${authorized_keys_file}"
     chown "${user_uid}:${user_group}" "${authorized_keys_file}"
     chmod 600 "${authorized_keys_file}"
+  else
+    rm -f "${authorized_keys_file}"
   fi
 
   cat > /etc/ssh/sshd_config <<EOF
@@ -135,7 +150,7 @@ if [ "$1" = "/usr/bin/rsync" ] || [ "$1" = "rsync" ]; then
   SSH_PASSWORD="${SSH_PASSWORD:-${PASSWORD}}"
   SSH_USER_HOME="${SSH_USER_HOME:-${VOLUME_PATH}}"
   SSH_DIR="${SSH_DIR:-${SSH_USER_HOME}/.ssh}"
-  SSH_MOUNTED_KEYS_DIR="${SSH_MOUNTED_KEYS_DIR:-/home/.ssh}"
+  SSH_AUTHORIZED_KEYS_FILE="${SSH_AUTHORIZED_KEYS_FILE:-/authorized_keys}"
 
   # Ensure VOLUME PATH exists
   if [ ! -e "${VOLUME_PATH}" ]; then
