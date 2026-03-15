@@ -109,7 +109,7 @@ currently this feature can leads to unexpected results depending on your directo
 - ENABLE_RSYNCD (default true): enable/disable rsync daemon on port 873.
 - ENABLE_SSH (default false): start SSH server for rsync-over-SSH.
 - SSH_PASSWORD (default PASSWORD): SSH password for USERNAME.
-- SSH_PASSWORD_AUTH (default true): enable SSH password authentication.
+- SSH_PASSWORD_AUTH (default true): enable SSH password authentication. Requires `SSH_PASSWORD` (or `PASSWORD`) to be set.
 - SSH_USER_HOME (default VOLUME_PATH): home directory of the SSH user.
 - SSH_DIR (default SSH_USER_HOME/.ssh): final `.ssh` directory used by sshd.
 - SSH_PUBLIC_KEY: public key(s) for USERNAME, supports `\n` separated keys.

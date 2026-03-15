@@ -16,6 +16,8 @@ setup_ssh() {
   local mounted_authorized_keys_file
   local generated_private_key
   local generated_public_key
+  local random_password
+  local unlock_password
   local user_group
   local user_home
   local user_uid
@@ -71,6 +73,24 @@ setup_ssh() {
       echo "${USERNAME}:${SSH_PASSWORD}" | chpasswd
     else
       echo "chpasswd not found, cannot set SSH_PASSWORD for user '${USERNAME}'"
+      exit 1
+    fi
+  elif [ "${ssh_password_auth}" = "yes" ]; then
+    echo "SSH_PASSWORD_AUTH is enabled but SSH_PASSWORD is empty for user '${USERNAME}'"
+    exit 1
+  else
+    # In key-only mode, ensure the account is not in a locked state.
+    # PasswordAuthentication is disabled in sshd_config, so this does not enable password login.
+    if [ -n "${SSH_PASSWORD}" ]; then
+      unlock_password="${SSH_PASSWORD}"
+    else
+      random_password="$(dd if=/dev/urandom bs=18 count=1 2>/dev/null | base64 | tr -d '\n')"
+      unlock_password="${random_password}"
+    fi
+    if command -v chpasswd >/dev/null 2>&1; then
+      echo "${USERNAME}:${unlock_password}" | chpasswd
+    else
+      echo "chpasswd not found, cannot initialize SSH account for user '${USERNAME}'"
       exit 1
     fi
   fi
